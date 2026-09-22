@@ -1,0 +1,633 @@
+<div align="center">
+
+# ⚡ QUICKSERVE
+
+### Smart Local Service Request & Dispatch Platform
+
+<p><strong>Book. Dispatch. Track. Complete.</strong><br>
+A full-stack platform connecting customers, service agents, and administrators in real time.</p>
+
+<p>
+<img src="https://img.shields.io/badge/Flutter-3.47.5-02569B?style=for-the-badge&logo=flutter&logoColor=white">
+<img src="https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white">
+<img src="https://img.shields.io/badge/PostGIS-Spatial_Dispatch-336791?style=for-the-badge&logo=postgresql&logoColor=white">
+<img src="https://img.shields.io/badge/Riverpod-State_Management-6C63FF?style=for-the-badge">
+<img src="https://img.shields.io/badge/Tests-83%2F83-success?style=for-the-badge">
+</p>
+
+<p>
+<a href="#-overview">Overview</a> •
+<a href="#-features">Features</a> •
+<a href="#-architecture">Architecture</a> •
+<a href="#-setup">Setup</a> •
+<a href="#-testing">Testing</a>
+</p>
+
+</div>
+
+---
+
+## 🖼️ Product Preview
+
+> Add your best screenshot as `docs/assets/quickserve-preview.png`.
+
+<p align="center">
+<img src="docs/assets/quickserve-preview.png" alt="QuickServe Preview" width="900">
+</p>
+
+<p align="center"><sub>Customer • Agent • Administrator workflows</sub></p>
+
+---
+
+## 🚀 Overview
+
+**QuickServe** is a full-stack service request management platform for local services such as **AC servicing, plumbing, electrical work, and cleaning**.
+
+Customers create requests, agents receive and manage assignments, and administrators monitor operations from a responsive dashboard.
+
+### Core Flow
+
+```text
+CUSTOMER
+   │
+   │ Create Service Request
+   ▼
+SUPABASE
+Auth + PostgreSQL + PostGIS + RLS + Realtime
+   │
+   ├──────────────► AGENT
+   │                 Accept → Start → Complete
+   │
+   └──────────────► ADMIN
+                     Monitor → Assign → Manage
+```
+
+---
+
+## ✨ Features
+
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### 👤 Customer
+
+- Registration / Login
+- Browse services
+- Create requests
+- Preferred date/time
+- Address & priority
+- Request tracking
+- Status history
+- Assigned-agent visibility
+- Active agent location
+- Payment tracking
+- Eligible cancellation
+- Profile
+
+</td>
+<td width="33%" valign="top">
+
+### 🛠️ Agent
+
+- Secure login
+- Agent profile
+- Online/offline status
+- 10–20 km service radius
+- Job offers
+- Accept / reject
+- Offer countdown
+- Start service
+- Work notes
+- Complete service
+- Record payment
+- Active-job location
+
+</td>
+<td width="33%" valign="top">
+
+### 🧑‍💼 Admin
+
+- Responsive dashboard
+- Customer management
+- Agent management
+- Request management
+- Manual assignment
+- Status management
+- Agent tracking
+- Payment records
+- Operational visibility
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🔄 Request Lifecycle
+
+```text
+┌──────────┐
+│ PENDING  │
+└────┬─────┘
+     ▼
+┌──────────────┐
+│ DISPATCHING  │
+└────┬─────────┘
+     ▼
+┌────────────┐
+│  ASSIGNED  │
+└────┬───────┘
+     ▼
+┌──────────────┐
+│ IN_PROGRESS  │
+└────┬─────────┘
+     ▼
+┌────────────┐
+│ COMPLETED  │
+└────────────┘
+
+Eligible states ─────────► CANCELLED
+```
+
+---
+
+## 🧠 Smart Dispatch
+
+Dispatch is performed by the backend rather than trusting the client.
+
+### Agent eligibility
+
+- 📍 Within configured service radius
+- 🟢 Available
+- ✅ Verified
+- 🛠️ Suitable for the requested service
+- 📡 Has current location
+
+### Candidate ordering
+
+```text
+1. Lowest active workload
+2. Shortest eligible distance
+3. Deterministic agent ID tie-breaker
+```
+
+### Concurrency protection
+
+```text
+Find Candidates
+      │
+      ▼
+FOR UPDATE SKIP LOCKED
+      │
+      ▼
+Re-check Eligibility
+      │
+      ▼
+Create 120-second Offer
+      │
+ ┌────┴─────┐
+ ▼          ▼
+ACCEPT   REJECT/EXPIRE
+ │          │
+ ▼          ▼
+ASSIGNED   NEXT CANDIDATE
+```
+
+---
+
+## 🗺️ Location Privacy
+
+| Role | Location Access |
+|---|---|
+| Customer | Assigned agent during active service |
+| Agent | Own current location |
+| Administrator | Operational agent visibility |
+| Unrelated customer | ❌ No access |
+| Anonymous user | ❌ No access |
+
+QuickServe uses foreground GPS for active service workflows and avoids unlimited location-history storage.
+
+---
+
+## 🏗️ Architecture
+
+```text
+                 QUICK SERVE
+                      │
+        ┌─────────────┴─────────────┐
+        │                           │
+   Flutter Mobile              Flutter Web
+    Android/iOS                Admin Portal
+        │                           │
+        └─────────────┬─────────────┘
+                      │
+               Riverpod + Router
+                      │
+                      ▼
+               Supabase Client
+                      │
+       ┌──────────────┼──────────────┐
+       │              │              │
+    Supabase          RLS         Realtime
+      Auth             │              │
+       │               ▼              │
+       │          PostgreSQL          │
+       │               │              │
+       │            PostGIS            │
+       └───────────────┴──────────────┘
+                      │
+                Dispatch RPCs
+                      │
+                      ▼
+               Agent Assignment
+```
+
+### Technology Stack
+
+| Layer | Technology |
+|---|---|
+| Mobile | Flutter |
+| Web Admin | Flutter Web |
+| Language | Dart |
+| State | Riverpod |
+| Navigation | go_router |
+| Backend | Supabase |
+| Auth | Supabase Auth |
+| Database | PostgreSQL |
+| Spatial | PostGIS |
+| Authorization | PostgreSQL RLS |
+| Realtime | Supabase Realtime |
+| Maps | flutter_map + OpenStreetMap |
+| GPS | geolocator |
+| Testing | Flutter test |
+| Source Control | Git + GitHub |
+
+---
+
+## 🔐 Security
+
+QuickServe uses a backend-authoritative security model.
+
+```text
+Flutter
+   │
+   ▼
+Supabase Auth
+   │
+   ▼
+Authenticated Session
+   │
+   ▼
+PostgreSQL RLS
+```
+
+### Role model
+
+```text
+PUBLIC SIGNUP
+     │
+     ▼
+ CUSTOMER ONLY
+     │
+     ├──────► AGENT
+     │        provisioned separately
+     │
+     └──────► ADMIN
+              provisioned separately
+```
+
+The client cannot freely assign itself an agent or administrator role.
+
+Protected database resources include:
+
+- profiles
+- service requests
+- service assignments
+- agent profiles
+- agent locations
+- request status history
+- payments
+
+Security-sensitive helper functions use `SECURITY DEFINER` with a controlled `search_path`.
+
+---
+
+## 📱 Application Flows
+
+### Customer
+
+```text
+Login / Register
+       ↓
+     Home
+       ├── Services
+       ├── Create Request
+       └── My Requests
+                ↓
+          Request Details
+                ↓
+        Assignment / Location
+                ↓
+             Payment
+```
+
+### Agent
+
+```text
+Login
+ ↓
+Dashboard
+ ├── Availability
+ ├── Service Radius
+ ├── Offers
+ └── Active Job
+          ↓
+      Start Service
+          ↓
+       Complete
+          ↓
+    Record Payment
+```
+
+### Admin
+
+```text
+Admin Login
+     ↓
+Dashboard
+ ├── Requests
+ ├── Customers
+ ├── Agents
+ ├── Payments
+ └── Request Details
+       ├── Assign Agent
+       ├── Update Status
+       └── Track Agent
+```
+
+---
+
+## 📂 Project Structure
+
+```text
+quickserve/
+├── android/
+├── ios/
+├── web/
+├── lib/
+│   ├── core/
+│   ├── data/
+│   ├── features/
+│   │   ├── auth/
+│   │   ├── customer/
+│   │   ├── agent/
+│   │   └── admin/
+│   └── main.dart
+├── supabase/
+│   └── migrations/
+├── test/
+├── docs/
+│   └── assets/
+├── .env.example
+├── .gitignore
+├── pubspec.yaml
+└── README.md
+```
+
+---
+
+## ⚙️ Setup
+
+### 1. Prerequisites
+
+Install Flutter, Dart, Android Studio/Android SDK, Git, and create a Supabase project.
+
+```bash
+flutter --version
+flutter doctor
+```
+
+### 2. Clone
+
+```bash
+git clone https://github.com/pranav122005/Quickserve.git
+cd Quickserve
+```
+
+### 3. Dependencies
+
+```bash
+flutter pub get
+```
+
+### 4. Environment
+
+Create `.env` from `.env.example`.
+
+```env
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_ANON_KEY=your_public_anon_or_publishable_key
+```
+
+> Never put a `service_role` key, database password, or other secret in the Flutter client.
+
+### 5. Database
+
+Configure the Supabase database using the project's migrations. Required components include PostgreSQL, PostGIS, Auth, RLS, dispatch functions, indexes, and Realtime.
+
+### 6. Run Web
+
+```bash
+flutter run -d chrome
+```
+
+### 7. Run Android
+
+```bash
+flutter devices
+flutter run
+```
+
+---
+
+## 🧪 Testing
+
+```bash
+flutter analyze
+flutter test
+```
+
+Current project baseline:
+
+```text
+Flutter Analyze
+0 issues
+
+Flutter Tests
+83 / 83 passing
+```
+
+### Recommended E2E flow
+
+```text
+Customer Registration
+        ↓
+Customer Login
+        ↓
+Create Request
+        ↓
+Dispatch
+        ↓
+Agent Offer
+        ↓
+Agent Accept
+        ↓
+Agent Start
+        ↓
+Agent Complete
+        ↓
+Payment Record
+        ↓
+Admin Verification
+```
+
+---
+
+## 👥 Demo Accounts
+
+> Replace these with non-production credentials before publishing a public repository.
+
+| Role | Email | Password |
+|---|---|---|
+| Customer | `customer@quickserve.com` | `QuickServe@123` |
+| Agent | `agent@quickserve.com` | `QuickServe@123` |
+| Admin | `admin@quickserve.com` | `QuickServe@123` |
+
+---
+
+## 🛡️ Security Checklist
+
+- [x] Supabase Auth
+- [x] Server-side role authorization
+- [x] PostgreSQL RLS
+- [x] Forced RLS
+- [x] SECURITY DEFINER helpers
+- [x] Controlled `search_path`
+- [x] No service-role key in Flutter
+- [x] Customer-only public signup
+- [x] Separate agent/admin provisioning
+- [x] Restricted location visibility
+- [x] No fake production GPS
+- [x] No unlimited location history
+- [x] Secrets excluded from Git
+
+---
+
+## 🛣️ Roadmap
+
+- [x] Authentication
+- [x] Role-based access
+- [x] Customer workflow
+- [x] Agent workflow
+- [x] Admin portal
+- [x] PostGIS dispatch
+- [x] Realtime updates
+- [x] Active-job location
+- [x] Payment recording
+- [x] RLS hardening
+- [x] Android release build
+- [ ] Production deployment
+- [ ] Push notifications
+- [ ] Advanced analytics
+- [ ] Extended CI/CD
+
+---
+
+## 📸 Recommended README Visuals
+
+Create this folder:
+
+```text
+docs/assets/
+```
+
+Add:
+
+```text
+quickserve-preview.png
+customer-dashboard.png
+create-request.png
+agent-dashboard.png
+agent-offer.png
+admin-dashboard.png
+architecture.png
+```
+
+Then add sections like:
+
+```html
+<h2 align="center">📱 Customer Experience</h2>
+
+<p align="center">
+  <img src="docs/assets/customer-dashboard.png" width="260">
+  <img src="docs/assets/create-request.png" width="260">
+  <img src="docs/assets/agent-offer.png" width="260">
+</p>
+```
+
+For a wide admin screenshot:
+
+```html
+<h2 align="center">🧑‍💼 Admin Operations</h2>
+
+<p align="center">
+  <img src="docs/assets/admin-dashboard.png" width="900">
+</p>
+```
+
+---
+
+## 🤝 Git Workflow
+
+```text
+Feature
+  ↓
+Feature Branch
+  ↓
+Implementation
+  ↓
+flutter analyze
+  ↓
+flutter test
+  ↓
+Manual E2E
+  ↓
+Pull Request
+  ↓
+Review
+  ↓
+main
+```
+
+Example commits:
+
+```text
+feat: add agent offer workflow
+fix: resolve RLS recursion
+fix: repair agent availability
+test: add authorization coverage
+docs: update deployment guide
+```
+
+---
+
+<div align="center">
+
+# ⚡ QuickServe
+
+### Secure • Realtime • Location-Aware • Service Management
+
+<p><sub>Customer • Agent • Administrator</sub></p>
+
+</div>
